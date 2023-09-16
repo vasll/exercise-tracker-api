@@ -1,6 +1,7 @@
 const express = require('express')
 const cors = require('cors')
 const apiRoutes = require('./routes/api');
+const { inspect } = require('util');
 const frontendRoutes = require('./routes/frontend');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose')
@@ -15,20 +16,29 @@ app.use(express.static('public'))
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Set up project routes
-app.use('/api', apiRoutes)
-app.use('/', frontendRoutes)
-
 // Set up custom middleware
 const loggerMiddleware = (req, res, next) => {
 	console.log(
-	`[${new Date().toLocaleString()}] ${req.method} ${req.url} FROM ${req.ip}\n` +
+	`[REQUEST] ${req.method} ${req.url} FROM ${req.ip}\n` +
 	` req.body: ${inspect(req.body)}\n` +
-	` req.params: ${inspect(req.params)}` 
+	` req.params: ${inspect(req.params)}\n` +
+	` req.query: ${inspect(req.query)}` 
 	);
+
+  	const originalSend = res.send;
+	res.send = function (data) {
+		console.log(`[RESPONSE] ${req.method} ${req.url}\n ${data}`);
+		originalSend.apply(res, arguments);
+	};
 	next();
 };
-app.use(loggerMiddleware)
+
+app.use("/api/users/:_id/logs", loggerMiddleware)
+
+
+// Set up project routes
+app.use('/api', apiRoutes)
+app.use('/', frontendRoutes)
 
 // Connect to mongodb database
 mongoose.connect(process.env.MONGOURL, { useNewUrlParser: true, useUnifiedTopology: true });

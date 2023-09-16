@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/user');
 const Exercise = require('../models/exercise');
+const util = require('util'); // Import the 'util' module
 
 // Creates a new user
 router.post("/users", async (req, res) => {
@@ -62,9 +63,17 @@ router.post("/users/:_id/exercises", async (req, res) => {
             username: user._id, 
             description: description, 
             duration: duration, 
-            date: parsedDate.toDateString()
+            date: parsedDate.toISOString()
         }).save();
-        return res.json(exercise);
+
+		const response = {
+            _id: user._id,
+            username: user.username,
+            description: exercise.description,
+            duration: exercise.duration,
+            date: new Date(exercise.date).toDateString(),
+        };
+        return res.json(response);
     } catch (err) {
         return res.status(500).json({ error: 'Server error' });
     }
@@ -79,15 +88,15 @@ router.get("/users/:_id/logs", async (req, res) => {
     const userId = req.params._id;
 
     // Validate from, to, limit
-    const parsedFrom = new Date(date);
-    if (from && isNaN(parsedFrom.getTime())) {
+    const dateFrom = new Date(from);
+    if (from && isNaN(dateFrom.getTime())) {
         return res.status(400).json({error: '"From" date should be in format YYYY-MM-DD'})
     };
-    const parsedTo = new Date(date);
-    if (to && isNaN(parsedTo.getTime())) {
+    const dateTo = new Date(to);
+    if (to && isNaN(dateTo.getTime())) {
         return res.status(400).json({error: '"To" date should be in format YYYY-MM-DD'})
     };
-    const parsedLimit = parseInt(duration, 10)
+    const parsedLimit = parseInt(limit, 10)
     if (limit && isNaN(parsedLimit)) {
         return res.status(400).json({error: '"Limit" should be an Integer'})
     };
@@ -101,13 +110,22 @@ router.get("/users/:_id/logs", async (req, res) => {
 
         // Build the query adding the from, to, limit params
         var query = {username: user._id};
-        if (from && to) {
-            query.date = { $gte: parsedFrom, $lte: parsedTo };
-        } else if (from) {
-            query.date = { $gte: parsedFrom };
-        } else if (to) {
-            query.date = { $lte: parsedTo };
-        }
+		if (from && to) {
+		    query.date = {
+		        $gte: dateFrom.toISOString(),
+		        $lte: dateTo.toISOString()
+		    };
+		} else if (from) {
+		    query.date = {
+		        $gte: dateFrom.toISOString()
+		    };
+		} else if (to) {
+		    query.date = {
+		        $lte: dateTo.toISOString()
+		    };
+		}
+
+		console.log(query)
         query = Exercise.find(query)
         if (limit) { query.limit(parsedLimit); }
         
@@ -125,6 +143,7 @@ router.get("/users/:_id/logs", async (req, res) => {
         }
         return res.json(response)
     } catch (err) {
+		console.log(err)
         return res.status(500).json({ error: 'Server error' });
     }
 });
