@@ -72,20 +72,47 @@ router.post("/users/:_id/exercises", async (req, res) => {
 
 // Returns a user object with a count of the exercises added, 
 // and a log array of all the exercises added
-// TODO add from, to, limit GET parameters to retrieve part of the log of the user
-// TODO from and to are dates in yyyy-mm-dd format. limit is an integer
 router.get("/users/:_id/logs", async (req, res) => {
+    const from = req.query.from;
+    const to = req.query.to;
+    const limit = req.query.limit;
     const userId = req.params._id;
+
+    // Validate from, to, limit
+    const parsedFrom = new Date(date);
+    if (from && isNaN(parsedFrom.getTime())) {
+        return res.status(400).json({error: '"From" date should be in format YYYY-MM-DD'})
+    };
+    const parsedTo = new Date(date);
+    if (to && isNaN(parsedTo.getTime())) {
+        return res.status(400).json({error: '"To" date should be in format YYYY-MM-DD'})
+    };
+    const parsedLimit = parseInt(duration, 10)
+    if (limit && isNaN(parsedLimit)) {
+        return res.status(400).json({error: '"Limit" should be an Integer'})
+    };
 
     try {
         // Check if user with given _id exists in database, also fetch its exercises
         const user = await User.findOne({_id: userId});
-        if (user == null) {
+        if (!user) {
             return res.status(500).json({error: 'User not found'})
         };
-        const exercises = await Exercise.find({username: user._id});
+
+        // Build the query adding the from, to, limit params
+        var query = {username: user._id};
+        if (from && to) {
+            query.date = { $gte: parsedFrom, $lte: parsedTo };
+        } else if (from) {
+            query.date = { $gte: parsedFrom };
+        } else if (to) {
+            query.date = { $lte: parsedTo };
+        }
+        query = Exercise.find(query)
+        if (limit) { query.limit(parsedLimit); }
         
-        // Format the response JSON
+        // Execute query, format the response JSON
+        const exercises = await query.exec();
         const response = {
             username: user.username,
             count: exercises.length,
