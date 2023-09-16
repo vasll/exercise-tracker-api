@@ -19,6 +19,17 @@ app.use(express.json());
 app.use('/api', apiRoutes)
 app.use('/', frontendRoutes)
 
+// Set up custom middleware
+const loggerMiddleware = (req, res, next) => {
+	console.log(
+	`[${new Date().toLocaleString()}] ${req.method} ${req.url} FROM ${req.ip}\n` +
+	` req.body: ${inspect(req.body)}\n` +
+	` req.params: ${inspect(req.params)}` 
+	);
+	next();
+};
+app.use(loggerMiddleware)
+
 // Connect to mongodb database
 mongoose.connect(process.env.MONGOURL, { useNewUrlParser: true, useUnifiedTopology: true });
 

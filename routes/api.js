@@ -1,8 +1,8 @@
 // Contains the routes on the '/api' path
 const express = require('express');
 const router = express.Router();
-const User = require('../models/user')
-const Exercise = require('../models/exercise')
+const User = require('../models/user');
+const Exercise = require('../models/exercise');
 
 // Creates a new user
 router.post("/users", async (req, res) => {
@@ -22,7 +22,7 @@ router.post("/users", async (req, res) => {
     } catch(err) {
         return res.status(500).json({error: 'Server error'});
     }
-})
+});
 
 // Returns all the users in an array
 router.get("/users", async (req, res) => {
@@ -32,15 +32,24 @@ router.get("/users", async (req, res) => {
     } catch (err) {
         return res.status(500).json({error: 'Server error'});
     }
-})
+});
 
 // Adds an exercise based on a user id
 router.post("/users/:_id/exercises", async (req, res) => {
     const {description, duration, date} = req.body;
     const userId = req.params._id;
 
-    // TODO validate duration
-    // TODO validate date
+    // Validate duration in minutes (Integer)
+    const parsedDuration = parseInt(duration, 10)
+    if (isNaN(parsedDuration)) {
+        return res.status(400).json({error: 'Duration should be in minutes (Integer)'})
+    };
+
+    // Validate date
+    const parsedDate = new Date(date);
+    if (isNaN(parsedDate.getTime())) {
+        return res.status(400).json({error: 'Date should be in format YYYY-MM-DD'})
+    };
 
     try {
         // Check if user with given _id exists in database
@@ -50,19 +59,48 @@ router.post("/users/:_id/exercises", async (req, res) => {
         };
 
         const exercise = await new Exercise({
-            username: user._id, description, duration, date
+            username: user._id, 
+            description: description, 
+            duration: duration, 
+            date: parsedDate.toDateString()
         }).save();
         return res.json(exercise);
     } catch (err) {
         return res.status(500).json({ error: 'Server error' });
     }
-})
+});
 
 // Returns a user object with a count of the exercises added, 
 // and a log array of all the exercises added
+// TODO add from, to, limit GET parameters to retrieve part of the log of the user
+// TODO from and to are dates in yyyy-mm-dd format. limit is an integer
 router.get("/users/:_id/logs", async (req, res) => {
-    // TODO
-})
+    const userId = req.params._id;
+
+    try {
+        // Check if user with given _id exists in database, also fetch its exercises
+        const user = await User.findOne({_id: userId});
+        if (user == null) {
+            return res.status(500).json({error: 'User not found'})
+        };
+        const exercises = await Exercise.find({username: user._id});
+        
+        // Format the response JSON
+        const response = {
+            username: user.username,
+            count: exercises.length,
+            _id: user._id,
+            log: exercises.map((e) => ({
+                description: e.description,
+                duration: e.duration,
+                date: new Date(e.date).toDateString()
+            }))
+        }
+        return res.json(response)
+    } catch (err) {
+        return res.status(500).json({ error: 'Server error' });
+    }
+});
 
 // Functions
 function isValidUsername(username) {
