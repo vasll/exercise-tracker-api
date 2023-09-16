@@ -33,8 +33,7 @@ const loggerMiddleware = (req, res, next) => {
 	next();
 };
 
-app.use("/api/users/:_id/logs", loggerMiddleware)
-
+app.use("/api/", loggerMiddleware)
 
 // Set up project routes
 app.use('/api', apiRoutes)

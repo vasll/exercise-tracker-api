@@ -46,11 +46,16 @@ router.post("/users/:_id/exercises", async (req, res) => {
         return res.status(400).json({error: 'Duration should be in minutes (Integer)'})
     };
 
-    // Validate date
-    const parsedDate = new Date(date);
-    if (isNaN(parsedDate.getTime())) {
-        return res.status(400).json({error: 'Date should be in format YYYY-MM-DD'})
-    };
+    // Validate date or use the current date if not provided
+    let parsedDate;
+    if (date) {
+        parsedDate = new Date(date);
+        if (isNaN(parsedDate.getTime())) {
+            return res.status(400).json({ error: 'Date should be in format YYYY-MM-DD' });
+        }
+    } else {
+        parsedDate = new Date();
+    }
 
     try {
         // Check if user with given _id exists in database
